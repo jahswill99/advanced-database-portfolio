@@ -1,19 +1,47 @@
-# Portfolio 5: Distributed and Cloud Database Architecture
+# Portfolio 5: Distributed Database Architecture
 
-## 1. Cloud Deployment Strategy for UNILAG Portal
-To guarantee high availability and handle the massive concurrent traffic during semester registration and result publication weeks, the UNILAG academic database is designed to be deployed on a distributed cloud platform (such as AWS RDS or Azure SQL Database).
+## 1. Cloud Architecture Strategy
+To ensure high availability and performance for the UNILAG academic portal—especially during peak periods like course registration or result publication—the database must transition from a single-node setup to a distributed cloud architecture.
 
-## 2. Replication and Availability
-During peak periods, 90% of the database traffic consists of students reading their results, while only 10% consists of lecturers writing grades. 
-* **Master-Slave Replication:** The architecture utilizes a single Primary (Master) node to handle all write operations (e.g., course enrollment, grade entry). 
-* **Read Replicas:** Multiple Read Replicas are deployed across different Availability Zones (AZs). When students query their transcripts, the load balancer routes their requests to the read replicas, preventing the primary node from crashing.
-* **High Availability:** If the primary node fails, an automated failover mechanism immediately promotes one of the synchronized read replicas to become the new primary node, ensuring zero downtime.
+## 2. Replication and High Availability
+The proposed architecture utilizes a **Master-Slave (Primary-Replica) Replication** model:
+* **Master Node:** Handles all write operations (e.g., lecturers entering new grades, students registering for courses).
+* **Read Replicas (Slave Nodes):** Synchronize data from the master node and handle all read-only queries (e.g., students viewing their transcripts or checking their results). 
+* **Benefit:** This prevents the database from becoming overwhelmed when thousands of students log in simultaneously, as the read load is distributed across multiple replica servers.
 
-## 3. Database Sharding (Horizontal Partitioning)
-As the university accumulates decades of academic records, a single database server will reach its storage and I/O limits. 
-* **Sharding Key:** To solve this, the `GRADE_RECORD` and `ENROLLMENT` tables are horizontally sharded based on the `faculty_id` or `admission_year`. 
-* **Implementation:** Records for the Faculty of Engineering and Faculty of Science are stored on separate physical database shards. This reduces the size of the indexes and dramatically speeds up query processing times.
+## 3. Sharding Strategy (Horizontal Partitioning)
+As the university's historical records grow, we will implement **Horizontal Sharding** based on the `faculty_id` or `department_id`.
+* **Example:** All data for the Faculty of Science (`faculty_id = 1`) resides on Shard A, while data for the Faculty of Engineering (`faculty_id = 2`) resides on Shard B. 
+* **Benefit:** Queries are routed directly to the specific shard holding that faculty's data, significantly reducing the search space and speeding up database response times.
 
-## 4. Consistency vs. Availability (CAP Theorem)
-* **Strong Consistency:** For financial transactions (tuition payments) and course registration (where a class has a strict limit of 50 seats), the database enforces strong consistency. All nodes must reflect the same data simultaneously to prevent overbooking.
-* **Eventual Consistency:** For the NoSQL LMS activity logs (discussed in Portfolio 4), the system tolerates eventual consistency. If a student's forum post takes a few extra milliseconds to replicate across all cloud nodes, it does not impact the integrity of the university's academic operations.
+## 4. Cloud Deployment 
+This distributed setup can be deployed using a managed cloud database service like Amazon RDS or Amazon Aurora. These services automatically manage failover (switching to a replica if the master fails), automated backups, and the dynamic scaling of read replicas during peak traffic periods.
+
+
+## 5. Deployment Evidence (Simulated Configuration)
+To provide evidence of how this distributed architecture would be provisioned, below is a simulated `docker-compose.yml` infrastructure-as-code snippet. This configuration deploys the UNILAG portal's Master-Slave replication setup using containerized database instances.
+
+```yaml
+version: '3.8'
+services:
+  unilag-db-master:
+    image: mysql:8.0
+    container_name: unilag-primary-db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin_password
+      MYSQL_DATABASE: unilag_portal
+    ports:
+      - "3306:3306"
+    command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW
+
+  unilag-db-replica-1:
+    image: mysql:8.0
+    container_name: unilag-read-replica
+    environment:
+      MYSQL_ROOT_PASSWORD: admin_password
+    ports:
+      - "3307:3306"
+    command: --server-id=2 --read-only=1
+    depends_on:
+      - unilag-db-master
+```
