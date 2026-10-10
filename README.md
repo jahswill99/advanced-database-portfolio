@@ -16,3 +16,32 @@ As the university's historical records grow, we will implement **Horizontal Shar
 
 ## 4. Cloud Deployment 
 This distributed setup can be deployed using a managed cloud database service like Amazon RDS or Amazon Aurora. These services automatically manage failover (switching to a replica if the master fails), automated backups, and the dynamic scaling of read replicas during peak traffic periods.
+
+
+## 5. Deployment Evidence (Simulated Configuration)
+To provide evidence of how this distributed architecture would be provisioned, below is a simulated `docker-compose.yml` infrastructure-as-code snippet. This configuration deploys the UNILAG portal's Master-Slave replication setup using containerized database instances.
+
+```yaml
+version: '3.8'
+services:
+  unilag-db-master:
+    image: mysql:8.0
+    container_name: unilag-primary-db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin_password
+      MYSQL_DATABASE: unilag_portal
+    ports:
+      - "3306:3306"
+    command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW
+
+  unilag-db-replica-1:
+    image: mysql:8.0
+    container_name: unilag-read-replica
+    environment:
+      MYSQL_ROOT_PASSWORD: admin_password
+    ports:
+      - "3307:3306"
+    command: --server-id=2 --read-only=1
+    depends_on:
+      - unilag-db-master
+```
