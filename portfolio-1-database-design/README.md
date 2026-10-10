@@ -1,3 +1,4 @@
+```mermaid
 erDiagram
     FACULTY ||--o{ DEPARTMENT : "contains"
     DEPARTMENT ||--o{ STUDENT : "enrolls"
@@ -46,3 +47,4 @@ erDiagram
         decimal exam_score
         decimal total_score
     }
+```
