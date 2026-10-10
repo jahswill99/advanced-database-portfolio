@@ -1,33 +1,53 @@
 # Portfolio 3: Transactions and Concurrency
 
-## 1. Transaction Scenario: Grade Update and Concurrency Control
-In the UNILAG academic portal, multiple administrators or lecturers might attempt to update a student's grade simultaneously. Without proper concurrency control, this can lead to a "lost update" anomaly, where one person's changes overwrite another's without accounting for the latest data. 
+## 1. Concurrency Control and Isolation (COMMIT)
+In the UNILAG academic portal, multiple lecturers might attempt to update a student's grade simultaneously. To prevent a "lost update" anomaly, we implement row-level locking (`SELECT ... FOR UPDATE`). This ensures **Isolation** by forcing concurrent transactions to wait until the lock is released.
 
-To prevent this, we implement a transaction using row-level locking (`SELECT ... FOR UPDATE`).
-
-## 2. SQL Implementation
-The following transaction locks a specific grade record before updating it. Any other transaction attempting to read or modify this specific row will be forced to wait until this transaction completes.
-
+**SQL Implementation:**
 ```sql
 START TRANSACTION;
 
--- Step 1: Read and lock the specific grade record
+-- Step 1: Lock the specific grade record for MIT26001 (grade_id = 1)
 SELECT ca_score, exam_score, total_score 
 FROM GRADE_RECORD 
 WHERE grade_id = 1 
 FOR UPDATE;
 
--- Step 2: Update the exam score (total_score is auto-computed by the schema)
+-- Step 2: Update the exam score
 UPDATE GRADE_RECORD 
 SET exam_score = 48.50 
 WHERE grade_id = 1;
 
--- Step 3: Commit the changes and release the lock
+-- Step 3: Persist the changes
 COMMIT;
 ```
 
-## 3. ACID Properties Demonstrated
-* **Atomicity:** The `START TRANSACTION` and `COMMIT` commands ensure that all steps in the grade update succeed together. If an error occurs before the commit, the entire transaction can be rolled back.
-* **Consistency:** The database schema enforces rules (e.g., `exam_score <= 60`). The transaction will fail if the update violates these constraints, keeping the database logically consistent.
-* **Isolation:** The `FOR UPDATE` clause ensures that this transaction is isolated. Other concurrent sessions cannot modify `grade_id = 1` until the lock is released.
-* **Durability:** Once the `COMMIT` is successful, the updated grade is permanently saved to the database and will survive any subsequent system crashes.
+**Output Evidence (After Commit):**
+| grade_id | enrollment_id | course_id | ca_score | exam_score | total_score | grade_letter |
+| -------- | ------------- | --------- | -------- | ---------- | ----------- | ------------ |
+| 1        | 1             | 1         | 30.50    | 48.50      | 79.00       | A            |
+
+---
+
+## 2. Transaction Error Handling (ROLLBACK)
+Transactions ensure **Atomicity**. If an operation violates university policy (e.g., entering an exam score greater than the maximum 60 marks), the system triggers an error, and the entire transaction is rolled back to keep the database consistent.
+
+**SQL Implementation:**
+```sql
+START TRANSACTION;
+
+-- Step 1: Attempt an invalid update (85 is over the 60 mark limit)
+UPDATE GRADE_RECORD 
+SET exam_score = 85.00 
+WHERE grade_id = 1;
+
+-- ERROR 3819 (HY000): Check constraint 'chk_exam_score' is violated.
+-- Step 2: Revert the transaction to maintain data integrity
+ROLLBACK;
+```
+
+**Output Evidence (After Rollback):**
+*The query fails and the record reverts to its previous state, preserving consistency.*
+| grade_id | enrollment_id | course_id | ca_score | exam_score | total_score | grade_letter |
+| -------- | ------------- | --------- | -------- | ---------- | ----------- | ------------ |
+| 1        | 1             | 1         | 30.50    | 48.50      | 79.00       | A            |
