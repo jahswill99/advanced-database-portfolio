@@ -1,16 +1,16 @@
--- UNILAG Academic Records and Result Management Portal Schema
--- Normalised to 3NF
-
+-- UNILAG Student Result and Portal Database Schema
 CREATE TABLE FACULTY (
     faculty_id INT AUTO_INCREMENT PRIMARY KEY,
-    faculty_name VARCHAR(100) NOT NULL UNIQUE
+    faculty_code VARCHAR(10) NOT NULL UNIQUE,
+    faculty_name VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE DEPARTMENT (
-    dept_id INT AUTO_INCREMENT PRIMARY KEY,
-    dept_name VARCHAR(100) NOT NULL,
-    faculty_id INT,
-    CONSTRAINT fk_dept_faculty FOREIGN KEY (faculty_id) REFERENCES FACULTY(faculty_id) ON DELETE CASCADE
+    department_id INT AUTO_INCREMENT PRIMARY KEY,
+    department_name VARCHAR(100) NOT NULL,
+    faculty_id INT NOT NULL,
+    CONSTRAINT fk_dept_faculty FOREIGN KEY (faculty_id) 
+        REFERENCES FACULTY(faculty_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE STUDENT (
@@ -18,38 +18,69 @@ CREATE TABLE STUDENT (
     matric_no VARCHAR(20) NOT NULL UNIQUE,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    date_of_birth DATE,
-    dept_id INT,
-    enrollment_year YEAR,
-    CONSTRAINT fk_student_dept FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone VARCHAR(20),
+    admission_year YEAR NOT NULL,
+    department_id INT NOT NULL,
+    CONSTRAINT fk_student_dept FOREIGN KEY (department_id) 
+        REFERENCES DEPARTMENT(department_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE LECTURER (
     lecturer_id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_no VARCHAR(20) NOT NULL UNIQUE,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE,
-    dept_id INT,
-    CONSTRAINT fk_lecturer_dept FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
+    email VARCHAR(100) NOT NULL UNIQUE,
+    department_id INT NOT NULL,
+    CONSTRAINT fk_lecturer_dept FOREIGN KEY (department_id) 
+        REFERENCES DEPARTMENT(department_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE COURSE (
-    course_code VARCHAR(10) PRIMARY KEY,
-    course_title VARCHAR(100) NOT NULL,
-    credit_units INT NOT NULL CHECK (credit_units BETWEEN 1 AND 6),
-    dept_id INT,
-    CONSTRAINT fk_course_dept FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
+    course_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_code VARCHAR(10) NOT NULL UNIQUE,
+    course_title VARCHAR(150) NOT NULL,
+    credit_units TINYINT NOT NULL CHECK (credit_units BETWEEN 1 AND 6),
+    level INT NOT NULL,
+    department_id INT NOT NULL,
+    CONSTRAINT fk_course_dept FOREIGN KEY (department_id) 
+        REFERENCES DEPARTMENT(department_id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE ACADEMIC_SESSION (
+    session_id INT AUTO_INCREMENT PRIMARY KEY,
+    session_name VARCHAR(20) NOT NULL,
+    semester ENUM('FIRST', 'SECOND') NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE,
+    CONSTRAINT uq_session_sem UNIQUE (session_name, semester)
+);
+
+CREATE TABLE ENROLLMENT (
+    enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    session_id INT NOT NULL,
+    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'APPROVED',
+    CONSTRAINT uq_student_session UNIQUE (student_id, session_id),
+    CONSTRAINT fk_enroll_student FOREIGN KEY (student_id) 
+        REFERENCES STUDENT(student_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_enroll_session FOREIGN KEY (session_id) 
+        REFERENCES ACADEMIC_SESSION(session_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE GRADE_RECORD (
-    record_id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT,
-    course_code VARCHAR(10),
-    semester VARCHAR(20),
-    ca_score DECIMAL(5,2) DEFAULT 0.00 CHECK (ca_score <= 40),
-    exam_score DECIMAL(5,2) DEFAULT 0.00 CHECK (exam_score <= 60),
+    grade_id INT AUTO_INCREMENT PRIMARY KEY,
+    enrollment_id INT NOT NULL,
+    course_id INT NOT NULL,
+    ca_score DECIMAL(5,2) DEFAULT 0.00 CHECK (ca_score BETWEEN 0 AND 40),
+    exam_score DECIMAL(5,2) DEFAULT 0.00 CHECK (exam_score BETWEEN 0 AND 60),
     total_score DECIMAL(5,2) GENERATED ALWAYS AS (ca_score + exam_score) STORED,
-    CONSTRAINT fk_grade_student FOREIGN KEY (student_id) REFERENCES STUDENT(student_id),
-    CONSTRAINT fk_grade_course FOREIGN KEY (course_code) REFERENCES COURSE(course_code),
-    CONSTRAINT chk_total_score CHECK (total_score <= 100)
+    grade_letter CHAR(1),
+    grade_point TINYINT,
+    CONSTRAINT uq_enrollment_course UNIQUE (enrollment_id, course_id),
+    CONSTRAINT fk_grade_enrollment FOREIGN KEY (enrollment_id) 
+        REFERENCES ENROLLMENT(enrollment_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_grade_course FOREIGN KEY (course_id) 
+        REFERENCES COURSE(course_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
