@@ -1,45 +1,34 @@
-# Portfolio 4: NoSQL and Advanced Data Models
+# Portfolio 4: NoSQL Implementation
 
-## 1. Selected NoSQL Data Model
-**Model Type:** Document-Based Database (e.g., MongoDB)
-**Case Study Application:** UNILAG E-Learning & LMS Activity Log
+## 1. NoSQL Use Case (UNILAG LMS Activity Logs)
+While the core academic portal (students, courses, grades) is highly structured and best suited for a relational database (MySQL), a university also generates massive amounts of unstructured and semi-structured data. A prime example is the Learning Management System (LMS) activity logs—tracking when students watch lecture videos, download materials, or participate in discussion forums. 
 
-## 2. Explanation of Suitability
-While the relational SQL database efficiently handles rigid, transactional data like financial payments and official exam grades, the university portal also generates massive amounts of semi-structured data, such as student LMS activity, forum posts, and login metadata. 
+## 2. NoSQL Database Choice: Document Store (MongoDB)
+A Document-based NoSQL database like MongoDB is ideal for this use case because LMS event data varies wildly depending on the action performed. It does not fit neatly into rigid relational tables.
 
-A Document-based NoSQL database is highly suitable for this because:
-* **Flexible Schema:** Not every student will interact with the LMS in the same way. Some will have arrays of forum comments; others will have none. Document databases do not require empty columns for missing data.
-* **Nested Data Structures:** We can store a student's recent assignments and device login history within a single document using arrays, eliminating the need for complex `JOIN` operations across multiple tables.
-* **Horizontal Scalability:** As thousands of students generate daily LMS logs, document databases can be easily sharded across multiple servers to handle the heavy write load.
-
-## 3. NoSQL Implementation Example (JSON Document)
-Below is a JSON document representing a single student's LMS activity log.
+## 3. JSON Document Structure
+Below is an example of how a student's LMS interaction is stored as a flexible JSON document:
 
 ```json
 {
-  "_id": "log_98374592",
+  "event_id": "evt_987654321",
+  "timestamp": "2026-10-10T14:30:00Z",
   "student_matric_no": "MIT26001",
-  "session_name": "2026/2027",
-  "last_login": {
-    "timestamp": "2026-10-09T08:30:00Z",
-    "ip_address": "197.210.64.12",
-    "device": "Google Pixel 9"
-  },
-  "forum_activity": [
-    {
-      "course_code": "MIT8103",
-      "post_id": "post_001",
-      "content": "Can someone explain the difference between B-Trees and Hash Indexes?",
-      "upvotes": 4,
-      "date_posted": "2026-10-08T14:15:00Z"
+  "course_code": "MIT8103",
+  "event_type": "video_playback",
+  "event_details": {
+    "video_title": "Introduction to Relational Algebra",
+    "playback_duration_seconds": 1240,
+    "device_info": {
+      "os": "Android",
+      "browser": "Chrome Mobile",
+      "ip_address": "197.210.64.12"
     }
-  ],
-  "recent_submissions": [
-    {
-      "course_code": "MIT8104",
-      "assignment_name": "Subnetting Practice",
-      "file_url": "[https://unilag-lms-storage.edu.ng/mit26001/subnetting.pdf](https://unilag-lms-storage.edu.ng/mit26001/subnetting.pdf)",
-      "submitted_at": "2026-10-07T22:45:00Z"
-    }
-  ]
+  }
 }
+```
+
+## 4. Technical Justification
+* **Schema Flexibility:** An event for "downloading a syllabus" will have completely different attributes than an event for "taking a quiz." JSON documents allow us to change the `event_details` object on the fly without altering any database schema.
+* **High Write Throughput:** LMS platforms generate thousands of activity logs per minute during peak study times. Document stores handle high-velocity write operations far better than highly normalized relational databases.
+* **Scalability:** As more UNILAG faculties adopt e-learning, this NoSQL database can easily be sharded and scaled out horizontally across multiple servers.
