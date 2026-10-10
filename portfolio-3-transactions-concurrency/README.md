@@ -53,3 +53,6 @@ ROLLBACK;
 | grade_id | enrollment_id | course_id | ca_score | exam_score | total_score | grade_letter |
 | -------- | ------------- | --------- | -------- | ---------- | ----------- | ------------ |
 | 1        | 1             | 1         | 30.50    | 48.50      | 79.00       | A            |
+
+<img width="1365" height="482" alt="image" src="https://github.com/user-attachments/assets/9b463dfa-4bd8-4533-bea7-a0e8cf496b55" />
+
