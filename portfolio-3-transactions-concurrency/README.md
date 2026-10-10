@@ -27,6 +27,8 @@ COMMIT;
 | -------- | ------------- | --------- | -------- | ---------- | ----------- | ------------ |
 | 1        | 1             | 1         | 30.50    | 48.50      | 79.00       | A            |
 
+<img width="1360" height="609" alt="image" src="https://github.com/user-attachments/assets/6d954eb9-6ab6-4930-8457-130cf17201b3" />
+
 ---
 
 ## 2. Transaction Error Handling (ROLLBACK)
